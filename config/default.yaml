@@ -1,0 +1,23 @@
+columns:
+  sku_id: sku_id
+  period: period
+  unit: unit
+  regular_price: regular_price
+  promo_price: promo_price
+
+period:
+  format: YYYY14MM
+
+weights:
+  regular: 0.5
+  promotion: 0.5
+
+windows:
+  rolling: 12
+  min_history: 6
+
+priority:
+  top_n: 50
+
+epsilon: 1.0e-9
+z_threshold: 2.0
