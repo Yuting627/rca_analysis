@@ -1,23 +1,27 @@
 from pathlib import Path
 
-from rca.pipeline import run_rca
+from rca.pipeline import run_rca, run_settings_from_config
+from rca.schema import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_settings_from_config():
+    cfg_path = ROOT / "config" / "default.yaml"
+    cfg = load_config(cfg_path)
+    settings = run_settings_from_config(cfg, cfg_path)
+    assert settings["period"] == "20261407"
+    assert settings["mode"] == "yoy"
+    assert settings["input_path"].name == "sku_monthly.csv"
+    assert "priority" in settings["out_path"].name
+
+
 def test_sample_pipeline_runs():
-    out = ROOT / "output" / "test_priority_20261407.csv"
-    df = run_rca(
-        input_path=ROOT / "data" / "sample" / "sku_monthly.csv",
-        period="20261407",
-        config_path=ROOT / "config" / "default.yaml",
-        out_path=out,
-        mode="mom",
-    )
+    cfg_path = ROOT / "config" / "default.yaml"
+    df = run_rca(config_path=cfg_path)
     assert len(df) > 0
     assert "priority" in df.columns
     assert "promo_unit" not in df.columns
     assert df["market_sign"].nunique() == 1
-    # features identity on output values present
-    assert df["aligned_contribution"].is_monotonic_decreasing or True  # sorted by priority primarily
-    assert out.exists()
+    out = df.attrs["settings"]["out_path"]
+    assert Path(out).exists()

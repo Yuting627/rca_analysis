@@ -26,7 +26,7 @@ def compute_contributions(
     df: pd.DataFrame,
     period: str,
     cfg: dict[str, Any],
-    mode: str = "mom",
+    mode: str = "yoy",
 ) -> pd.DataFrame:
     """Compute MoM or YoY Shapley contributions for report period."""
     eps = float(cfg.get("epsilon", 1e-9))
@@ -34,7 +34,7 @@ def compute_contributions(
     w_p = float(cfg["weights"]["promotion"])
 
     p1 = parse_period(period)
-    base = p1.mom() if mode == "mom" else p1.yoy()
+    base = p1.yoy() if mode == "yoy" else p1.mom()
     p0_str = base.format()
     p1_str = p1.format()
 

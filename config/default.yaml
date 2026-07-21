@@ -1,3 +1,9 @@
+# 运行入口：路径相对项目根目录（config/ 的上一级）
+io:
+  input: data/sample/sku_monthly.csv
+  output: output/priority_20261407.csv
+  mode: yoy   # mom | yoy
+
 columns:
   sku_id: sku_id
   period: period
@@ -7,6 +13,7 @@ columns:
 
 period:
   format: YYYY14MM
+  report: "20261407"   # 报告期，YYYY14MM
 
 weights:
   regular: 0.5

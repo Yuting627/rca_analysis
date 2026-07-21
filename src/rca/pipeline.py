@@ -15,7 +15,7 @@ from rca.io import read_sku_monthly, write_output
 from rca.period import parse_period
 from rca.priority import compute_priority
 from rca.promotion import attach_promo_drivers
-from rca.schema import load_config
+from rca.schema import load_config, resolve_config_path
 from rca.trend import attach_trend
 
 OUTPUT_COLUMNS = [
@@ -53,21 +53,27 @@ OUTPUT_COLUMNS = [
 ]
 
 
-def run_rca(
-    input_path: str | Path,
-    period: str,
-    config_path: str | Path,
-    out_path: str | Path | None = None,
-    mode: str = "mom",
-) -> pd.DataFrame:
-    cfg = load_config(config_path)
-    period = parse_period(period).format()
+def run_settings_from_config(cfg: dict[str, Any], config_path: str | Path) -> dict[str, Any]:
+    """Read run I/O settings from config (single source of truth)."""
+    io = cfg["io"]
+    return {
+        "input_path": resolve_config_path(io["input"], config_path),
+        "out_path": resolve_config_path(io["output"], config_path),
+        "period": parse_period(str(cfg["period"]["report"])).format(),
+        "mode": str(io["mode"]).lower(),
+    }
 
-    raw = read_sku_monthly(input_path, cfg)
+
+def run_rca(config_path: str | Path) -> pd.DataFrame:
+    """Run full pipeline; input/output/period/mode all come from config."""
+    cfg = load_config(config_path)
+    settings = run_settings_from_config(cfg, config_path)
+
+    raw = read_sku_monthly(settings["input_path"], cfg)
     panel = add_features(raw, cfg)
     panel = add_zscores(panel, cfg)
 
-    contrib = compute_contributions(panel, period, cfg, mode=mode)
+    contrib = compute_contributions(panel, settings["period"], cfg, mode=settings["mode"])
     contrib = attach_abnormal(contrib, panel)
     contrib = attach_trend(contrib, panel, cfg)
     contrib = attach_promo_drivers(contrib)
@@ -79,6 +85,6 @@ def run_rca(
     cols = [c for c in OUTPUT_COLUMNS if c in result.columns]
     result = result[cols]
 
-    if out_path is not None:
-        write_output(result, out_path)
+    write_output(result, settings["out_path"])
+    result.attrs["settings"] = settings
     return result

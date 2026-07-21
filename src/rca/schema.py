@@ -31,14 +31,45 @@ def _validate_config(cfg: dict[str, Any]) -> None:
     missing = [c for c in INTERNAL_COLUMNS if c not in cols]
     if missing:
         raise ValueError(f"config.columns missing: {missing}")
+
+    io = cfg.get("io") or {}
+    for key in ("input", "output", "mode"):
+        if not io.get(key):
+            raise ValueError(f"config.io.{key} is required")
+    mode = str(io["mode"]).lower()
+    if mode not in ("mom", "yoy"):
+        raise ValueError(f"config.io.mode must be mom|yoy, got {mode!r}")
+
+    period_cfg = cfg.get("period") or {}
+    fmt = period_cfg.get("format", "YYYY14MM")
+    if fmt != "YYYY14MM":
+        raise ValueError(f"unsupported period.format: {fmt}")
+    if not period_cfg.get("report"):
+        raise ValueError("config.period.report is required (YYYY14MM)")
+    parse_period(str(period_cfg["report"]))
+
     w = cfg.get("weights") or {}
     wr = float(w.get("regular", 0.5))
     wp = float(w.get("promotion", 0.5))
     if abs(wr + wp - 1.0) > 1e-9:
         raise ValueError(f"weights.regular + weights.promotion must be 1, got {wr}+{wp}")
-    fmt = (cfg.get("period") or {}).get("format", "YYYY14MM")
-    if fmt != "YYYY14MM":
-        raise ValueError(f"unsupported period.format: {fmt}")
+
+
+def project_root_from_config(config_path: str | Path) -> Path:
+    """Resolve project root: parent of config/ when applicable, else config dir."""
+    cfg_path = Path(config_path).resolve()
+    parent = cfg_path.parent
+    if parent.name == "config":
+        return parent.parent
+    return parent
+
+
+def resolve_config_path(path: str | Path, config_path: str | Path) -> Path:
+    """Resolve io paths: absolute as-is; relative against project root."""
+    p = Path(path)
+    if p.is_absolute():
+        return p
+    return (project_root_from_config(config_path) / p).resolve()
 
 
 def map_columns(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for SKU RCA pipeline."""
+"""CLI for SKU RCA pipeline. Run parameters are read from the config file."""
 
 from __future__ import annotations
 
@@ -14,24 +14,25 @@ from rca.pipeline import run_rca  # noqa: E402
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run SKU RCA priority ranking")
-    parser.add_argument("--input", required=True, help="Input CSV path")
-    parser.add_argument("--period", required=True, help="Report period YYYY14MM, e.g. 20261407")
-    parser.add_argument("--config", default=str(ROOT / "config" / "default.yaml"))
-    parser.add_argument("--out", required=True, help="Output CSV path")
-    parser.add_argument("--mode", choices=("mom", "yoy"), default="mom")
+    parser = argparse.ArgumentParser(
+        description="Run SKU RCA. input/output/period/mode are read from config."
+    )
+    parser.add_argument(
+        "--config",
+        default=str(ROOT / "config" / "default.yaml"),
+        help="Path to YAML config (default: config/default.yaml)",
+    )
     args = parser.parse_args()
 
-    df = run_rca(
-        input_path=args.input,
-        period=args.period,
-        config_path=args.config,
-        out_path=args.out,
-        mode=args.mode,
+    df = run_rca(config_path=args.config)
+    settings = df.attrs.get("settings", {})
+    out = settings.get("out_path", "")
+    print(f"Wrote {len(df)} rows to {out}")
+    print(
+        f"period={settings.get('period', 'n/a')} mode={settings.get('mode', 'n/a')} "
+        f"market_sign={df['market_sign'].iloc[0] if len(df) else 'n/a'} "
+        f"overall_delta={df['overall_delta_value'].iloc[0] if len(df) else 'n/a'}"
     )
-    print(f"Wrote {len(df)} rows to {args.out}")
-    print(f"market_sign={df['market_sign'].iloc[0] if len(df) else 'n/a'} "
-          f"overall_delta={df['overall_delta_value'].iloc[0] if len(df) else 'n/a'}")
 
 
 if __name__ == "__main__":
